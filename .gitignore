@@ -1,0 +1,53 @@
+frontend-box-registry/node_modules
+contract-box-registry/.env
+
+# Hardhat files
+contract-box-registry/cache
+contract-box-registry/artifacts
+contract-box-registry/node_modules
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+contract-box-registry/ignition/deployments/chain-31337
+
+# dependencies
+frontend-box-registry/node_modules
+frontend-box-registry/.pnp
+frontend-box-registry/.pnp.js
+frontend-box-registry/.yarn/install-state.gz
+
+# testing
+frontend-box-registry/coverage
+
+# next.js
+frontend-box-registry/.next/
+frontend-box-registry/out/
+
+# production
+frontend-box-registry/build
+
+# misc
+frontend-box-registry/.DS_Store
+frontend-box-registry/*.pem
+
+# debug
+frontend-box-registry/npm-debug.log*
+frontend-box-registry/yarn-debug.log*
+frontend-box-registry/yarn-error.log*
+
+# local env files
+frontend-box-registry/.env*.local
+
+# vercel
+frontend-box-registry/.vercel
+
+# typescript
+frontend-box-registry/*.tsbuildinfo
+frontend-box-registry/next-env.d.ts
