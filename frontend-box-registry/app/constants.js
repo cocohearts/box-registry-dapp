@@ -1,5 +1,5 @@
 export const contractAddress = "0x0F58F9BD585dAFF2A49343CC8ee0f45565e3AADC";
-export const abi = [
+export const registry_abi = [
     {
         "inputs": [],
         "stateMutability": "payable",
@@ -102,3 +102,75 @@ export const abi = [
         "type": "receive"
     }
 ]; 
+export const box_abi = [
+    {
+        "inputs": [
+        {
+            "internalType": "contract BoxRegistry",
+            "name": "_registry",
+            "type": "address"
+        },
+        {
+            "internalType": "uint256",
+            "name": "_registryIndex",
+            "type": "uint256"
+        }
+        ],
+        "stateMutability": "payable",
+        "type": "constructor"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+        {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+        }
+        ],
+        "name": "Deposit",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+        {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+        }
+        ],
+        "name": "Withdrawal",
+        "type": "event"
+    },
+    {
+        "stateMutability": "payable",
+        "type": "fallback"
+    },
+    {
+        "inputs": [],
+        "name": "getBalance",
+        "outputs": [
+        {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+        }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "withdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "stateMutability": "payable",
+        "type": "receive"
+    }
+]
