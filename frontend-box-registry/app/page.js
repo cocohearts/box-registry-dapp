@@ -1,18 +1,17 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 const ethers = require("ethers");   
 import { registry_abi, contractAddress, box_abi } from "./constants.js" 
 
-export default function Home() {
+export default async function Home() {
   const [boxes, setBoxes] = useState([]);
   const [balances, setBalances] = useState([]);
   const [connection, setConnection] = useState();
   const [buttonValue, setButtonValue] = useState('Connect');
   // let provider, signer;
+  const { provider, signer } = await GetProviderSigner();
 
   const handleConnect = async () => {
-    const { provider, signer } = await GetProviderSigner();
-    console.log(provider);
     const contract = new ethers.Contract(contractAddress, registry_abi, signer);
 
     const boxListPromise = new Promise((resolve) => {
@@ -21,7 +20,6 @@ export default function Home() {
           console.log(boxes);
           let newBalances = [];
           for (let index in boxes) {
-            console.log("in event listener call:", provider);
             const balance = await provider.getBalance(boxes[index]);
             newBalances.push(balance);
           }
@@ -43,7 +41,6 @@ export default function Home() {
       <title>My App</title>
       <h1>Box Registry</h1>
       <MyConnectButton buttonValue={buttonValue} setButtonValue={setButtonValue} handleConnect={handleConnect} />
-      {/* <MyFormComponent/> */}
       <p>{connection}</p>
       {boxes.map((box, index) => (
         <DepositForm key={index} addr={box} balances={balances} setBalances={setBalances} index={index} />
@@ -68,25 +65,36 @@ async function GetProviderSigner() {
     } else {
       setButtonValue("Please install MetaMask")
     }
-    console.log("provider:", provider);
-    console.log("signer:", signer);
     return { provider,signer };
 }
 
 function EtherScanLink(tx) {
-  if (tx) {
+  if (![null,undefined].includes(tx)) {
     let txHash = tx['hash'];
     let url = `https://sepolia.etherscan.io/tx/${txHash}`;
-    return (
-      <a href={url}>Etherscan Link</a>
-    )
+    if (![null,undefined].includes(txHash)) {
+      return (
+        <a href={url}>Etherscan Link</a>
+      )
+    }
   }
 }
 
 function DepositForm({ addr, balances, setBalances, index }) {
   const [inputValue, setInputValue] = useState('');
-  const [depositTx,setDepositTx] = useState();
-  console.log(depositTx);
+  let depositTx;
+  // const [depositTx,setDepositTx] = useState();
+  const [triggerUpdate, setTriggerUpdate] = useState(false); // New state to trigger updates
+
+  useEffect(() => {
+    if (depositTx) {
+      // Perform any necessary updates or side effects here
+      // For example, fetching new data or updating the UI
+      console.log('Transaction submitted:', depositTx);
+      // Optionally, toggle triggerUpdate to force a re-render if needed
+      setTriggerUpdate(!triggerUpdate);
+    }
+  }, [depositTx, triggerUpdate]); // Listen for changes to depositTx and triggerUpdate
 
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
@@ -96,12 +104,15 @@ function DepositForm({ addr, balances, setBalances, index }) {
       to: addr,
       value: ethers.utils.parseUnits(inputValue,"ether"),
     };
-    setDepositTx(await signer.sendTransaction(transaction));
+    depositTx = await signer.sendTransaction(transaction);
+    // setDepositTx(txResp);
 
     console.log(`Form submitted with value: ${inputValue}`);
     await depositTx.wait();
-    balances[index] += inputValue;
-    setBalances(balances);
+    const updatedBalances = [...balances]; // Create a copy of the balances array
+    updatedBalances[index] = updatedBalances[index].add(ethers.utils.parseEther(inputValue));
+    setBalances(updatedBalances);
+    console.log(balances.map((balance)=>(ethers.utils.formatEther(balance))));
   };
 
   const handleChange = (event) => {
@@ -122,7 +133,8 @@ function DepositForm({ addr, balances, setBalances, index }) {
         /><br></br>
         <button type="submit">Submit</button>
       </form>
-      <EtherScanLink tx={depositTx} />
+      {depositTx && <EtherScanLink tx={depositTx} />}
+      {/* <EtherScanLink tx={depositTx} /> */}
     </>
   );
 }
