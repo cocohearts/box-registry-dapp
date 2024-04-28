@@ -25,6 +25,7 @@ export default function Home() {
   const [buttonValue, setButtonValue] = useState('Connect');
   const [contractState, setContractState] = useState();
   const [withdrawals, setWithdrawals] = useState([]);
+  const [pendingCreations, setPendingCreations] = useState([]);
 
   /**
    * Handles the connect button click event
@@ -69,22 +70,28 @@ export default function Home() {
 
   return (
     <>
-      <title>My App</title>
-      <h1>Box Registry</h1>
+      <title>Box Registry</title>
+      <h1>Your Boxes</h1>
       <MyConnectButton buttonValue={buttonValue} setButtonValue={setButtonValue} handleConnect={handleConnect} />
       {/* <p>{connection}</p> */}
       <p>{connection ? <a href={connection.url} target="_blank" rel="noopener noreferrer">{connection.text}</a> : null}</p>
+      {contractState && boxes.length === 0 && <p>No boxes found</p>}
       {boxes.map((box, index) => (
         <> 
-          <DepositForm key={2*index} addr={box} balances={balances} setBalances={setBalances} index={index} />
-          <WithdrawForm key={2*index+1} index={index} balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} />
+          <DepositForm key={box} addr={box} balances={balances} setBalances={setBalances} index={index} />
+          <WithdrawForm key={box+1} index={index} balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} />
         </>
       ))}
       
-      <p>{contractState && <CreateBoxForm balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} contract={contractState} />}</p>
       <p>
         {withdrawals.map((withdrawal, index) => (
-          <p key={index}><a href={withdrawal.url}>Withdrawal from box {withdrawal.box} for {ethers.utils.formatEther(withdrawal.amount)}</a></p>
+          <p key={withdrawal.box}><a href={withdrawal.url}>Withdrawal from box {withdrawal.box} for {ethers.utils.formatEther(withdrawal.amount)}</a></p>
+        ))}
+      </p>
+      {contractState && <CreateBoxForm balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} pendingCreations={pendingCreations} setPendingCreations={setPendingCreations} contract={contractState} />}
+      <p>
+        {pendingCreations.map((creation, index) => (
+          <p key={creation.hash}><a href={creation.url}>Box creation pending, hash {creation.hash}</a></p>
         ))}
       </p>
     </>
@@ -301,7 +308,7 @@ function MyConnectButton({ buttonValue, setButtonValue, handleConnect }) {
  * @param {Object} props.contract - The contract object
  * @returns {JSX.Element} The rendered create box form
  */
-function CreateBoxForm({ boxes, setBoxes, balances, setBalances, contract }) {
+function CreateBoxForm({ boxes, setBoxes, balances, setBalances, pendingCreations, setPendingCreations, contract }) {
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
     console.log("Creating box!")
@@ -323,9 +330,19 @@ function CreateBoxForm({ boxes, setBoxes, balances, setBalances, contract }) {
 
     let { provider, signer } = await GetProviderSigner();
     const boxContract = new ethers.Contract(contractAddress, registry_abi, signer);
+
     const createBoxTx = await boxContract.createBox();
+    const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
+    let newPendingCreations = [...pendingCreations]; // Create a copy of the pendingCreations array
+
+    newPendingCreations.push({ url:url, hash:createBoxTx.hash });
+    setPendingCreations(newPendingCreations);
     await createBoxTx.wait();
     await boxCreationPromise;
+    let updatedPendingCreations = [...pendingCreations]; // Create a copy of the pendingCreations array
+    // pop from front of array
+    updatedPendingCreations.shift();
+    setPendingCreations(updatedPendingCreations);
   }
   return (
     <>
