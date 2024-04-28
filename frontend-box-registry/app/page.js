@@ -7,9 +7,12 @@
 
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 const ethers = require("ethers");   
-import { registry_abi, contractAddress, box_abi } from "./constants.js" 
+import { registry_abi, sepoliaContractAddress, localContractAddress, box_abi } from "./constants.js" 
+
+let local = false;
+let contractAddress = local ? localContractAddress : sepoliaContractAddress;
 
 /**
  * Home component
@@ -21,6 +24,7 @@ export default function Home() {
   const [connection, setConnection] = useState();
   const [buttonValue, setButtonValue] = useState('Connect');
   const [contractState, setContractState] = useState();
+  const [withdrawals, setWithdrawals] = useState([]);
 
   /**
    * Handles the connect button click event
@@ -28,6 +32,9 @@ export default function Home() {
    */
   const handleConnect = async () => {
     const { provider, signer } = await GetProviderSigner();
+
+    let contractCode = await provider.getCode(contractAddress);
+    console.log(contractCode);
 
     let registryContract = new ethers.Contract(contractAddress, registry_abi, signer);
 
@@ -48,11 +55,16 @@ export default function Home() {
     });
     console.log("Listener set!")
     const box_addresses = await registryContract.getUserBoxes();
-    setConnection("Connecting transaction pending, please wait")
+    const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`
+    setConnection({ text: "Connecting transaction pending, please wait", url })
+    // const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`
+    // setConnection(`<a url=${url}>Connecting transaction</a> pending, please wait`)
     await box_addresses.wait();
     await boxListPromise;
-    setConnection("Connecting transaction completed!")
-    setButtonValue("Connected");
+
+    setContractState(registryContract);
+    setConnection({ text: "Connecting transaction completed!", url });
+    setButtonValue("Reconnect");
   };
 
   return (
@@ -60,15 +72,21 @@ export default function Home() {
       <title>My App</title>
       <h1>Box Registry</h1>
       <MyConnectButton buttonValue={buttonValue} setButtonValue={setButtonValue} handleConnect={handleConnect} />
-      <p>{connection}</p>
+      {/* <p>{connection}</p> */}
+      <p>{connection ? <a href={connection.url} target="_blank" rel="noopener noreferrer">{connection.text}</a> : null}</p>
       {boxes.map((box, index) => (
         <> 
           <DepositForm key={2*index} addr={box} balances={balances} setBalances={setBalances} index={index} />
-          <WithdrawForm key={2*index+1} index={index} balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} />
+          <WithdrawForm key={2*index+1} index={index} balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} />
         </>
       ))}
       
-      {contractState && <CreateBoxForm balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} contract={contractState} />}
+      <p>{contractState && <CreateBoxForm balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} contract={contractState} />}</p>
+      <p>
+        {withdrawals.map((withdrawal, index) => (
+          <p key={index}><a href={withdrawal.url}>Withdrawal from box {withdrawal.box} for {ethers.utils.formatEther(withdrawal.amount)}</a></p>
+        ))}
+      </p>
     </>
   );
 }
@@ -101,12 +119,35 @@ async function GetProviderSigner() {
  * @param {string} txHash - The transaction hash
  * @returns {JSX.Element} The rendered link to the Etherscan transaction page
  */
-function EtherScanLink({ txHash }) {
+function EtherScanLink({ txHash, text }) {
   console.log(txHash);
   let url = `https://sepolia.etherscan.io/tx/${txHash}`;
   console.log(url);
   return (
-    <a href={url}>Etherscan Link</a>
+    <a href={url}>{text}</a>
+  )
+}
+
+/**
+ * Renders information about a specific box including its address and balance.
+ * 
+ * @param {Object} props - The props object containing box and balance values.
+ * @param {string} props.box - The address of the box.
+ * @param {number} props.balance - The balance of the box.
+ * @returns {JSX.Element} React component displaying box information with a link to Etherscan.
+ */
+function BoxInfo({ box, balance }) {
+  let url = `https://sepolia.etherscan.io/address/${box}`;
+  return (
+    <>
+      <p>
+        <a href={url}>Etherscan Link</a> 
+        <br />
+        Box Balance: {balance}
+        <br />
+        Box Address: {box}
+      </p>
+    </>
   )
 }
 
@@ -122,6 +163,7 @@ function EtherScanLink({ txHash }) {
 function DepositForm({ addr, balances, setBalances, index }) {
   const [inputValue, setInputValue] = useState('');
   const [depositTxHash,setDepositTxHash] = useState();
+  const [depositTxText,setDepositTxText] = useState();
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
     let { provider, signer } = await GetProviderSigner();
@@ -135,8 +177,10 @@ function DepositForm({ addr, balances, setBalances, index }) {
     console.log(`Transaction sent with value: ${inputValue}`);
     console.log(newDepositTx['hash']);
     setDepositTxHash(newDepositTx['hash']);
+    setDepositTxText(`Deposit of ${inputValue} pending`);
     setInputValue('');
     await newDepositTx.wait();
+    setDepositTxText(`Deposit of ${inputValue} confirmed`);
     console.log(`Transaction with value ${inputValue} confirmed`);
     const updatedBalances = [...balances]; // Create a copy of the balances array
     let balance = updatedBalances[index];
@@ -155,19 +199,21 @@ function DepositForm({ addr, balances, setBalances, index }) {
 
   return (
     <>
-      <p>Address: {addr}, Balance: {ethers.utils.formatEther(balances[index])}</p>
+      {/* <p>Address: {addr}, Balance: {ethers.utils.formatEther(balances[index])}</p> */}
+      <BoxInfo box={addr} balance={ethers.utils.formatEther(balances[index])} />
       <form onSubmit={handleSubmit}>
         <label htmlFor="myInput">Add more:</label>
-        <br></br>
+        <br/>
         <input
           type="text"
           id="myInput"
           value={inputValue}
           onChange={handleChange}
-        /><br></br>
-        <button type="submit">Submit</button>
+        />
+        <br/>
+        <button type="submit">Deposit</button>
       </form>
-      {depositTxHash && <EtherScanLink txHash={depositTxHash} />}
+      {depositTxHash && <EtherScanLink txHash={depositTxHash} text={depositTxText} />}
     </>
   );
 }
@@ -182,35 +228,51 @@ function DepositForm({ addr, balances, setBalances, index }) {
  * @param {Function} props.setBoxes - The function to update the box addresses
  * @returns {JSX.Element} The rendered withdraw form
  */
-function WithdrawForm({ index, balances, setBalances, boxes, setBoxes }) {
-  const [withdrawStatus, setWithdrawStatus] = useState('');
+function WithdrawForm({ index, balances, setBalances, boxes, setBoxes, withdrawals, setWithdrawals }) {
+  const [withdrawStatus, setWithdrawStatus] = useState();
+  const [isWithdrawn, setIsWithdrawn] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
-    let { provider, signer } = await GetProviderSigner();
+    const { provider, signer } = await GetProviderSigner();
+    console.log(signer);
     const contract = new ethers.Contract(boxes[index], box_abi, signer);
+    console.log(boxes[index]);
     console.log(contract);
-    const withdrawal_tx = await contract.withdraw();
+    let withdrawal_tx = await contract.withdraw({ gasLimit: 100000 });
+    const withdrawal_tx_url = `https://sepolia.etherscan.io/tx/${withdrawal_tx.hash}`;
     console.log(withdrawal_tx);
-    setWithdrawStatus("Withdrawal transaction pending");
+    let withdrawalText = { text: "Withdrawal transaction pending", url: withdrawal_tx_url }
+    setWithdrawStatus(withdrawalText);
+    setIsWithdrawn(true);
     await withdrawal_tx.wait();
-    setWithdrawStatus("Withdrawal complete");
+    withdrawalText = { text:"Withdrawal complete", url: withdrawal_tx_url }
+    setWithdrawStatus(withdrawalText);
+
+    let updatedWithdrawals = [...withdrawals]; // Create a copy of the withdrawals array
+    const newWithdrawal = { box: boxes[index], amount: balances[index], url: withdrawal_tx_url };
+    // push the new withdrawal object to the updatedWithdrawals array at the front
+    updatedWithdrawals.unshift(newWithdrawal);
+    setWithdrawals(updatedWithdrawals);
+    console.log(updatedWithdrawals);
 
     const updatedBalances = [...balances]; // Create a copy of the balances array
     updatedBalances.splice(index, 1);
     setBalances(updatedBalances);
-    const updatedBoxes = [...boxes]; // Create a copy of the balances array
+    const updatedBoxes = [...boxes]; // Create a copy of the boxes array
     updatedBoxes.splice(index, 1);
     setBoxes(updatedBoxes);
     setWithdrawStatus('');
+    setIsWithdrawn(false);
   }
 
   return (
     <>
     <form onSubmit={handleSubmit}>
-      <button type="submit">Withdraw</button>
+      <button type="submit" disabled={isWithdrawn}>Withdraw</button>
     </form>
-    <p>{withdrawStatus}</p>
+    {withdrawStatus && <a href={withdrawStatus.url}>{withdrawStatus.text}</a>}
+    {/* <p>{withdrawStatus}</p> */}
     </>
   )
 }
