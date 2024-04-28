@@ -34,8 +34,9 @@ export default function Home() {
     const box_addresses = await registryContract.getUserBoxes();
     setConnection("Connecting transaction pending, please wait")
     await box_addresses.wait();
-    setConnection("Connecting transaction completed!")
     await boxListPromise;
+    setConnection("Connecting transaction completed!")
+    setButtonValue("Connected");
   };
 
   return (
@@ -75,34 +76,20 @@ async function GetProviderSigner() {
     return { provider,signer };
 }
 
-function EtherScanLink(tx) {
-  if (![null,undefined].includes(tx)) {
-    let txHash = tx['hash'];
-    let url = `https://sepolia.etherscan.io/tx/${txHash}`;
-    if (![null,undefined].includes(txHash)) {
-      return (
-        <a href={url}>Etherscan Link</a>
-      )
-    }
-  }
+function EtherScanLink({ txHash }) {
+  console.log(txHash);
+  let url = `https://sepolia.etherscan.io/tx/${txHash}`;
+  console.log(url);
+  return (
+    <a href={url}>Etherscan Link</a>
+  )
 }
 
 function DepositForm({ addr, balances, setBalances, index }) {
   const [inputValue, setInputValue] = useState('');
-  let depositTx;
-  // const [depositTx,setDepositTx] = useState();
-  const [triggerUpdate, setTriggerUpdate] = useState(false); // New state to trigger updates
-
-  useEffect(() => {
-    if (depositTx) {
-      // Perform any necessary updates or side effects here
-      // For example, fetching new data or updating the UI
-      console.log('Transaction submitted:', depositTx);
-      // Optionally, toggle triggerUpdate to force a re-render if needed
-      setTriggerUpdate(!triggerUpdate);
-    }
-  }, [depositTx, triggerUpdate]); // Listen for changes to depositTx and triggerUpdate
-
+  // const [depositTx, setDepositTx] = useState('');
+  // let depositTx;
+  const [depositTxHash,setDepositTxHash] = useState();
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
     let { provider, signer } = await GetProviderSigner();
@@ -112,14 +99,23 @@ function DepositForm({ addr, balances, setBalances, index }) {
       value: ethers.utils.parseUnits(inputValue,"ether"),
     };
     console.log(`Form submitted with value: ${inputValue}`);
-    depositTx = await signer.sendTransaction(transaction);
+    const newDepositTx = await signer.sendTransaction(transaction);
     console.log(`Transaction sent with value: ${inputValue}`);
+    console.log(newDepositTx['hash']);
+    setDepositTxHash(newDepositTx['hash']);
+    // console.log(depositTx);
+    // setTriggerUpdate(!triggerUpdate);
     setInputValue('');
-    await depositTx.wait();
+    await newDepositTx.wait();
     console.log(`Transaction with value ${inputValue} confirmed`);
     const updatedBalances = [...balances]; // Create a copy of the balances array
     let balance = updatedBalances[index];
-    updatedBalances[index] = balance.add(ethers.utils.parseEther(inputValue));
+    console.log(balance);
+    if (balance === 0) {
+      updatedBalances[index] = ethers.utils.parseEther(inputValue);
+    } else {
+      updatedBalances[index] = balance.add(ethers.utils.parseEther(inputValue));
+    }
     setBalances(updatedBalances);
   };
 
@@ -141,8 +137,7 @@ function DepositForm({ addr, balances, setBalances, index }) {
         /><br></br>
         <button type="submit">Submit</button>
       </form>
-      {depositTx && <EtherScanLink tx={depositTx} />}
-      {/* <EtherScanLink tx={depositTx} /> */}
+      {depositTxHash && <EtherScanLink txHash={depositTxHash} />}
     </>
   );
 }
