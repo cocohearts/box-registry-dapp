@@ -3,19 +3,20 @@ import React, { useState, useEffect } from 'react';
 const ethers = require("ethers");   
 import { registry_abi, contractAddress, box_abi } from "./constants.js" 
 
-export default async function Home() {
+export default function Home() {
   const [boxes, setBoxes] = useState([]);
   const [balances, setBalances] = useState([]);
   const [connection, setConnection] = useState();
   const [buttonValue, setButtonValue] = useState('Connect');
-  // let provider, signer;
-  const { provider, signer } = await GetProviderSigner();
+  const [contractState, setContractState] = useState();
 
   const handleConnect = async () => {
-    const contract = new ethers.Contract(contractAddress, registry_abi, signer);
+    const { provider, signer } = await GetProviderSigner();
+
+    let registryContract = new ethers.Contract(contractAddress, registry_abi, signer);
 
     const boxListPromise = new Promise((resolve) => {
-        contract.once("BoxList", async (boxes) => {
+        registryContract.once("BoxList", async (boxes) => {
           console.log("heard something!")
           console.log(boxes);
           let newBalances = [];
@@ -25,11 +26,12 @@ export default async function Home() {
           }
           setBalances(newBalances);
           setBoxes(boxes);
+          setContractState(registryContract);
           resolve(); // Resolve the promise when the event is handled
         });
     });
     console.log("Listener set!")
-    const box_addresses = await contract.getUserBoxes();
+    const box_addresses = await registryContract.getUserBoxes();
     setConnection("Connecting transaction pending, please wait")
     await box_addresses.wait();
     setConnection("Connecting transaction completed!")
@@ -43,8 +45,13 @@ export default async function Home() {
       <MyConnectButton buttonValue={buttonValue} setButtonValue={setButtonValue} handleConnect={handleConnect} />
       <p>{connection}</p>
       {boxes.map((box, index) => (
-        <DepositForm key={index} addr={box} balances={balances} setBalances={setBalances} index={index} />
+        <> 
+          <DepositForm key={2*index} addr={box} balances={balances} setBalances={setBalances} index={index} />
+          <WithdrawForm key={2*index+1} index={index} balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} />
+        </>
       ))}
+      
+      {contractState && <CreateBoxForm balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} contract={contractState} />}
     </>
   );
 }
@@ -104,15 +111,15 @@ function DepositForm({ addr, balances, setBalances, index }) {
       to: addr,
       value: ethers.utils.parseUnits(inputValue,"ether"),
     };
-    depositTx = await signer.sendTransaction(transaction);
-    // setDepositTx(txResp);
-
     console.log(`Form submitted with value: ${inputValue}`);
+    depositTx = await signer.sendTransaction(transaction);
+    console.log(`Transaction sent with value: ${inputValue}`);
+    setInputValue('');
+
     await depositTx.wait();
     const updatedBalances = [...balances]; // Create a copy of the balances array
     updatedBalances[index] = updatedBalances[index].add(ethers.utils.parseEther(inputValue));
     setBalances(updatedBalances);
-    console.log(balances.map((balance)=>(ethers.utils.formatEther(balance))));
   };
 
   const handleChange = (event) => {
@@ -139,55 +146,75 @@ function DepositForm({ addr, balances, setBalances, index }) {
   );
 }
 
+function WithdrawForm({ index, balances, setBalances, boxes, setBoxes }) {
+  const [withdrawStatus, setWithdrawStatus] = useState('');
+
+  const handleSubmit = async (event) => {
+    event.preventDefault(); // Prevent the default form submission behavior
+    let { provider, signer } = await GetProviderSigner();
+    const contract = new ethers.Contract(boxes[index], box_abi, signer);
+    console.log(contract);
+    const withdrawal_tx = await contract.withdraw();
+    console.log(withdrawal_tx);
+    setWithdrawStatus("Withdrawal transaction pending");
+    await withdrawal_tx.wait();
+    setWithdrawStatus("Withdrawal complete");
+
+    const updatedBalances = [...balances]; // Create a copy of the balances array
+    updatedBalances.splice(index, 1);
+    setBalances(updatedBalances);
+    const updatedBoxes = [...boxes]; // Create a copy of the balances array
+    updatedBoxes.splice(index, 1);
+    setBoxes(updatedBoxes);
+  }
+
+  return (
+    <>
+    <form onSubmit={handleSubmit}>
+      <button type="submit">Withdraw</button>
+    </form>
+    <p>{withdrawStatus}</p>
+    </>
+  )
+}
+
 function MyConnectButton({ buttonValue, setButtonValue, handleConnect }) {
   return (
     <button onClick={handleConnect}>{buttonValue}</button>
   )
 }
 
-// function MyFormComponent({ addr, balance }) {
-//   const [inputValue, setInputValue] = useState('');
+function CreateBoxForm({ boxes, setBoxes, balances, setBalances, contract }) {
+  const handleSubmit = async (event) => {
+    event.preventDefault(); // Prevent the default form submission behavior
+    console.log("Creating box!")
 
-//   const handleSubmit = async (event) => {
-//     event.preventDefault(); // Prevent the default form submission behavior
-//     console.log(`Form submitted with value: ${inputValue}`);
+    const boxCreationPromise = new Promise((resolve) => {
+        contract.once("BoxCreation", async (box) => {
+          console.log("heard something!")
+          console.log(box);
+          let updatedBalances = [...balances]; // Create a copy of the balances array
+          updatedBalances.push(0.0);
+          setBalances(updatedBalances);
+          let updatedBoxes = [...boxes]; // Create a copy of the balances array
+          updatedBoxes.push(box);
+          setBoxes(updatedBoxes);
+          contract.log("states updated!")
+          resolve(); // Resolve the promise when the event is handled
+        });
+    });
 
-//     if (typeof window.ethereum !== "undefined") {
-//       const provider = new ethers.providers.Web3Provider(window.ethereum);
-//       await provider.send('eth_requestAccounts', [])
-//       const signer = provider.getSigner();
-//       const contract = new ethers.Contract(contractAddress, abi, signer);
-//       contract.connect(signer);
-//       try {
-//         const transactionResponse = await contract.play({
-//           value: ethers.utils.parseEther(inputValue)
-//         });
-//         transactionResponse.wait().then(async (receipt) => {
-//           console.log(transactionResponse);
-//         })
-//       } catch (error) {
-//         console.log(error)
-//       }
-//     } else {
-//       alert("Please install MetaMask")
-//     }
-//   };
-
-//   const handleChange = (event) => {
-//     setInputValue(event.target.value);
-//   };
-
-//   return (
-//     <form onSubmit={handleSubmit}>
-//       <label htmlFor="myInput">Add ETH:</label>
-//       <br></br>
-//       <input
-//         type="text"
-//         id="myInput"
-//         value={inputValue}
-//         onChange={handleChange}
-//       /><br></br>
-//       <button type="submit">Submit</button>
-//     </form>
-//   );
-// }
+    let { provider, signer } = await GetProviderSigner();
+    const boxContract = new ethers.Contract(contractAddress, registry_abi, signer);
+    const createBoxTx = await boxContract.createBox();
+    await createBoxTx.wait();
+    await boxCreationPromise;
+  }
+  return (
+    <>
+      <form onSubmit={handleSubmit}>
+        <button type="submit">Create New Box</button>
+      </form>
+    </>
+  )
+}

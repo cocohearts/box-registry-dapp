@@ -1,4 +1,4 @@
-export const contractAddress = "0x0F58F9BD585dAFF2A49343CC8ee0f45565e3AADC";
+export const contractAddress = "0x789AB964b80a704222F369cDb6E385974DFa2305";
 export const registry_abi = [
     {
         "inputs": [],
@@ -101,8 +101,8 @@ export const registry_abi = [
         "stateMutability": "payable",
         "type": "receive"
     }
-]; 
-export const box_abi = [
+    ]; 
+    export const box_abi = [
     {
         "inputs": [
         {

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
 // Uncomment this line to use console.log
@@ -12,14 +12,14 @@ contract Box {
     event Withdrawal(uint amount);
     event Deposit(uint amount);
 
-    constructor(BoxRegistry _registry, uint256 _registryIndex) payable {
-        owner = payable(msg.sender);
+    constructor(BoxRegistry _registry, uint256 _registryIndex, address payable _owner) payable {
+        owner = _owner;
         registry = _registry;
         registryIndex = _registryIndex;
     }
 
     modifier onlyOwner {
-        require(msg.sender==owner);
+        require(payable(msg.sender)==owner, "Must be owner");
         _;
     }
 
@@ -30,9 +30,9 @@ contract Box {
         emit Withdrawal(amount);
     }
 
-    function getBalance() public view returns (uint) {
-        return address(this).balance;
-    }
+    // function getBalance() public view returns (uint) {
+    //     return address(this).balance;
+    // }
 
     fallback() external payable {emit Deposit(msg.value);}
 
@@ -49,7 +49,7 @@ contract BoxRegistry {
 
     // Function to create a new Box contract and add it to the user's list of boxes
     function createBox() public {
-        Box newBox = new Box(this,userBoxes[msg.sender].length);
+        Box newBox = new Box(this,userBoxes[msg.sender].length,payable(msg.sender));
         userBoxes[msg.sender].push(newBox);
         emit BoxCreation(newBox);
     }
