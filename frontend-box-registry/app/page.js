@@ -196,7 +196,7 @@ function CreateBoxForm({ boxes, setBoxes, balances, setBalances, contract }) {
           let updatedBoxes = [...boxes]; // Create a copy of the balances array
           updatedBoxes.push(box);
           setBoxes(updatedBoxes);
-          contract.log("states updated!")
+          console.log("states updated!")
           resolve(); // Resolve the promise when the event is handled
         });
     });
