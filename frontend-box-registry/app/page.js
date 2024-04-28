@@ -115,10 +115,11 @@ function DepositForm({ addr, balances, setBalances, index }) {
     depositTx = await signer.sendTransaction(transaction);
     console.log(`Transaction sent with value: ${inputValue}`);
     setInputValue('');
-
     await depositTx.wait();
+    console.log(`Transaction with value ${inputValue} confirmed`);
     const updatedBalances = [...balances]; // Create a copy of the balances array
-    updatedBalances[index] = updatedBalances[index].add(ethers.utils.parseEther(inputValue));
+    let balance = updatedBalances[index];
+    updatedBalances[index] = balance.add(ethers.utils.parseEther(inputValue));
     setBalances(updatedBalances);
   };
 
@@ -166,6 +167,7 @@ function WithdrawForm({ index, balances, setBalances, boxes, setBoxes }) {
     const updatedBoxes = [...boxes]; // Create a copy of the balances array
     updatedBoxes.splice(index, 1);
     setBoxes(updatedBoxes);
+    setWithdrawStatus('');
   }
 
   return (
