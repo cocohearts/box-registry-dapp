@@ -1,8 +1,20 @@
+/**
+ * @file FILEPATH: /Users/alex-zhao/Coding/crypto/box-registry-dapp/frontend-box-registry/app/page.js
+ * @desc This file contains the implementation of the Home component, which serves as the main page of the Box Registry application.
+ * The Home component displays a list of boxes and provides functionality to connect to a provider, deposit funds, withdraw funds, and create new boxes.
+ * It also includes helper functions for interacting with the Ethereum network using ethers.js library.
+ */
+
 'use client'
+
 import React, { useState, useEffect } from 'react';
 const ethers = require("ethers");   
 import { registry_abi, contractAddress, box_abi } from "./constants.js" 
 
+/**
+ * Home component
+ * @returns {JSX.Element} The rendered Home component
+ */
 export default function Home() {
   const [boxes, setBoxes] = useState([]);
   const [balances, setBalances] = useState([]);
@@ -10,6 +22,10 @@ export default function Home() {
   const [buttonValue, setButtonValue] = useState('Connect');
   const [contractState, setContractState] = useState();
 
+  /**
+   * Handles the connect button click event
+   * @returns {Promise<void>} A promise that resolves when the connection is established
+   */
   const handleConnect = async () => {
     const { provider, signer } = await GetProviderSigner();
 
@@ -57,6 +73,10 @@ export default function Home() {
   );
 }
 
+/**
+ * Retrieves the provider and signer for interacting with the Ethereum network
+ * @returns {Promise<{provider: ethers.providers.Web3Provider, signer: ethers.Signer}>} A promise that resolves with the provider and signer objects
+ */
 async function GetProviderSigner() {
     let provider, signer;
     if (typeof window.ethereum !== "undefined") {
@@ -76,6 +96,11 @@ async function GetProviderSigner() {
     return { provider,signer };
 }
 
+/**
+ * Renders a link to the Etherscan transaction page
+ * @param {string} txHash - The transaction hash
+ * @returns {JSX.Element} The rendered link to the Etherscan transaction page
+ */
 function EtherScanLink({ txHash }) {
   console.log(txHash);
   let url = `https://sepolia.etherscan.io/tx/${txHash}`;
@@ -85,10 +110,17 @@ function EtherScanLink({ txHash }) {
   )
 }
 
+/**
+ * Renders a deposit form for a specific box
+ * @param {Object} props - The component props
+ * @param {string} props.addr - The address of the box
+ * @param {Array<number>} props.balances - The balances of the boxes
+ * @param {Function} props.setBalances - The function to update the balances
+ * @param {number} props.index - The index of the box
+ * @returns {JSX.Element} The rendered deposit form
+ */
 function DepositForm({ addr, balances, setBalances, index }) {
   const [inputValue, setInputValue] = useState('');
-  // const [depositTx, setDepositTx] = useState('');
-  // let depositTx;
   const [depositTxHash,setDepositTxHash] = useState();
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
@@ -103,8 +135,6 @@ function DepositForm({ addr, balances, setBalances, index }) {
     console.log(`Transaction sent with value: ${inputValue}`);
     console.log(newDepositTx['hash']);
     setDepositTxHash(newDepositTx['hash']);
-    // console.log(depositTx);
-    // setTriggerUpdate(!triggerUpdate);
     setInputValue('');
     await newDepositTx.wait();
     console.log(`Transaction with value ${inputValue} confirmed`);
@@ -142,6 +172,16 @@ function DepositForm({ addr, balances, setBalances, index }) {
   );
 }
 
+/**
+ * Renders a withdraw form for a specific box
+ * @param {Object} props - The component props
+ * @param {number} props.index - The index of the box
+ * @param {Array<number>} props.balances - The balances of the boxes
+ * @param {Function} props.setBalances - The function to update the balances
+ * @param {Array<string>} props.boxes - The array of box addresses
+ * @param {Function} props.setBoxes - The function to update the box addresses
+ * @returns {JSX.Element} The rendered withdraw form
+ */
 function WithdrawForm({ index, balances, setBalances, boxes, setBoxes }) {
   const [withdrawStatus, setWithdrawStatus] = useState('');
 
@@ -175,12 +215,30 @@ function WithdrawForm({ index, balances, setBalances, boxes, setBoxes }) {
   )
 }
 
+/**
+ * Renders a connect button
+ * @param {Object} props - The component props
+ * @param {string} props.buttonValue - The value of the button
+ * @param {Function} props.setButtonValue - The function to update the button value
+ * @param {Function} props.handleConnect - The function to handle the connect button click event
+ * @returns {JSX.Element} The rendered connect button
+ */
 function MyConnectButton({ buttonValue, setButtonValue, handleConnect }) {
   return (
     <button onClick={handleConnect}>{buttonValue}</button>
   )
 }
 
+/**
+ * Renders a form to create a new box
+ * @param {Object} props - The component props
+ * @param {Array<number>} props.balances - The balances of the boxes
+ * @param {Function} props.setBalances - The function to update the balances
+ * @param {Array<string>} props.boxes - The array of box addresses
+ * @param {Function} props.setBoxes - The function to update the box addresses
+ * @param {Object} props.contract - The contract object
+ * @returns {JSX.Element} The rendered create box form
+ */
 function CreateBoxForm({ boxes, setBoxes, balances, setBalances, contract }) {
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
