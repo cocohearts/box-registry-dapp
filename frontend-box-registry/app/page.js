@@ -8,7 +8,7 @@
 'use client'
 
 import React, { useState } from 'react';
-const ethers = require("ethers");   
+const ethers = require("ethers");
 import { registry_abi, sepoliaContractAddress, localContractAddress, box_abi } from "./constants.js" 
 
 let local = false;
@@ -65,7 +65,7 @@ export default function Home() {
 
     setContractState(registryContract);
     setConnection({ text: "Connecting transaction completed!", url });
-    setButtonValue("Reconnect");
+    setButtonValue("Refresh registry");
   };
 
   return (
@@ -265,9 +265,9 @@ function WithdrawForm({ index, balances, setBalances, boxes, setBoxes, withdrawa
 
     const updatedBalances = [...balances]; // Create a copy of the balances array
     updatedBalances.splice(index, 1);
-    setBalances(updatedBalances);
     const updatedBoxes = [...boxes]; // Create a copy of the boxes array
     updatedBoxes.splice(index, 1);
+    setBalances(updatedBalances);
     setBoxes(updatedBoxes);
     setWithdrawStatus('');
     setIsWithdrawn(false);
