@@ -7,12 +7,12 @@
 
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 const ethers = require("ethers");
 import { registry_abi, sepoliaContractAddress, localContractAddress, box_abi } from "./constants.js" 
 
-let local = false;
-let contractAddress = local ? localContractAddress : sepoliaContractAddress;
+// let local = true;
+// let contractAddress = local ? localContractAddress : sepoliaContractAddress;
 
 /**
  * Home component
@@ -26,6 +26,22 @@ export default function Home() {
   const [contractState, setContractState] = useState();
   const [withdrawals, setWithdrawals] = useState([]);
   const [pendingCreations, setPendingCreations] = useState([]);
+  const [contractAddress, setContractAddress] = useState('');
+
+  const detectNetwork = async (provider) => {
+    const network = await provider.getNetwork();
+    switch (network.chainId) {
+      case 31337: // Local network chain ID
+        setContractAddress(localContractAddress);
+        break;
+      case 11155111: // Sepolia network chain ID
+        setContractAddress(sepoliaContractAddress);
+        break;
+      default:
+        console.error('Unsupported network');
+        break;
+    }
+  };
 
   /**
    * Handles the connect button click event
@@ -33,9 +49,10 @@ export default function Home() {
    */
   const handleConnect = async () => {
     const { provider, signer } = await GetProviderSigner();
+    await detectNetwork(provider);
 
-    let contractCode = await provider.getCode(contractAddress);
-    console.log(contractCode);
+    // let contractCode = await provider.getCode(contractAddress);
+    // console.log(contractCode);
 
     let registryContract = new ethers.Contract(contractAddress, registry_abi, signer);
 
@@ -58,8 +75,6 @@ export default function Home() {
     const box_addresses = await registryContract.getUserBoxes();
     const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`
     setConnection({ text: "Connecting transaction pending, please wait", url })
-    // const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`
-    // setConnection(`<a url=${url}>Connecting transaction</a> pending, please wait`)
     await box_addresses.wait();
     await boxListPromise;
 
@@ -76,22 +91,22 @@ export default function Home() {
       {/* <p>{connection}</p> */}
       <p>{connection ? <a href={connection.url} target="_blank" rel="noopener noreferrer">{connection.text}</a> : null}</p>
       {contractState && boxes.length === 0 && <p>No boxes found</p>}
-      {boxes.map((box, index) => (
+      {boxes.map((box) => (
         <> 
-          <DepositForm key={box} addr={box} balances={balances} setBalances={setBalances} index={index} />
-          <WithdrawForm key={box+1} index={index} balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} />
+          <DepositForm key={box} addr={box} boxes={boxes} balances={balances} setBalances={setBalances}/>
+          <WithdrawForm key={box+1} addr={box} balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} />
         </>
       ))}
       
       <p>
-        {withdrawals.map((withdrawal, index) => (
+        {withdrawals.map((withdrawal) => (
           <p key={withdrawal.box}><a href={withdrawal.url}>Withdrawal from box {withdrawal.box} for {ethers.utils.formatEther(withdrawal.amount)}</a></p>
         ))}
       </p>
       {contractState && <CreateBoxForm balances={balances} setBalances={setBalances} boxes={boxes} setBoxes={setBoxes} pendingCreations={pendingCreations} setPendingCreations={setPendingCreations} contract={contractState} />}
       <p>
-        {pendingCreations.map((creation, index) => (
-          <p key={creation.hash}><a href={creation.url}>Box creation pending, hash {creation.hash}</a></p>
+        {pendingCreations.map((creation) => (
+          <p key={creation.hash}><a href={creation.url}>Box creation pending, tx hash {creation.hash}</a></p>
         ))}
       </p>
     </>
@@ -167,7 +182,7 @@ function BoxInfo({ box, balance }) {
  * @param {number} props.index - The index of the box
  * @returns {JSX.Element} The rendered deposit form
  */
-function DepositForm({ addr, balances, setBalances, index }) {
+function DepositForm({ addr, boxes, balances, setBalances, }) {
   const [inputValue, setInputValue] = useState('');
   const [depositTxHash,setDepositTxHash] = useState();
   const [depositTxText,setDepositTxText] = useState();
@@ -190,6 +205,7 @@ function DepositForm({ addr, balances, setBalances, index }) {
     setDepositTxText(`Deposit of ${inputValue} confirmed`);
     console.log(`Transaction with value ${inputValue} confirmed`);
     const updatedBalances = [...balances]; // Create a copy of the balances array
+    let index = boxes.indexOf(addr);
     let balance = updatedBalances[index];
     console.log(balance);
     if (balance === 0) {
@@ -203,6 +219,8 @@ function DepositForm({ addr, balances, setBalances, index }) {
   const handleChange = (event) => {
     setInputValue(event.target.value);
   };
+
+  let index = boxes.indexOf(addr);
 
   return (
     <>
@@ -235,7 +253,7 @@ function DepositForm({ addr, balances, setBalances, index }) {
  * @param {Function} props.setBoxes - The function to update the box addresses
  * @returns {JSX.Element} The rendered withdraw form
  */
-function WithdrawForm({ index, balances, setBalances, boxes, setBoxes, withdrawals, setWithdrawals }) {
+function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, withdrawals, setWithdrawals }) {
   const [withdrawStatus, setWithdrawStatus] = useState();
   const [isWithdrawn, setIsWithdrawn] = useState(false);
 
@@ -243,8 +261,8 @@ function WithdrawForm({ index, balances, setBalances, boxes, setBoxes, withdrawa
     event.preventDefault(); // Prevent the default form submission behavior
     const { provider, signer } = await GetProviderSigner();
     console.log(signer);
-    const contract = new ethers.Contract(boxes[index], box_abi, signer);
-    console.log(boxes[index]);
+    const contract = new ethers.Contract(addr, box_abi, signer);
+    console.log(addr);
     console.log(contract);
     let withdrawal_tx = await contract.withdraw({ gasLimit: 100000 });
     const withdrawal_tx_url = `https://sepolia.etherscan.io/tx/${withdrawal_tx.hash}`;
@@ -256,8 +274,9 @@ function WithdrawForm({ index, balances, setBalances, boxes, setBoxes, withdrawa
     withdrawalText = { text:"Withdrawal complete", url: withdrawal_tx_url }
     setWithdrawStatus(withdrawalText);
 
+    let index = boxes.indexOf(addr);
     let updatedWithdrawals = [...withdrawals]; // Create a copy of the withdrawals array
-    const newWithdrawal = { box: boxes[index], amount: balances[index], url: withdrawal_tx_url };
+    const newWithdrawal = { box: addr, amount: balances[index], url: withdrawal_tx_url };
     // push the new withdrawal object to the updatedWithdrawals array at the front
     updatedWithdrawals.unshift(newWithdrawal);
     setWithdrawals(updatedWithdrawals);
@@ -329,9 +348,9 @@ function CreateBoxForm({ boxes, setBoxes, balances, setBalances, pendingCreation
     });
 
     let { provider, signer } = await GetProviderSigner();
-    const boxContract = new ethers.Contract(contractAddress, registry_abi, signer);
+    // const boxContract = new ethers.Contract(contractAddress, registry_abi, signer);
 
-    const createBoxTx = await boxContract.createBox();
+    const createBoxTx = await contract.createBox();
     const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
     let newPendingCreations = [...pendingCreations]; // Create a copy of the pendingCreations array
 

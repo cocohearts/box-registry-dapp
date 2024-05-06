@@ -56,7 +56,8 @@ contract BoxRegistry {
 
     function removeBox(address owner) public {
         uint256 index=0;
-        while (index<userBoxes[owner].length && address(userBoxes[owner][index])!=msg.sender) {
+        while (index<userBoxes[owner].length) {
+            if (address(userBoxes[owner][index])==msg.sender) break;
             index++;
         }
         require(index<userBoxes[owner].length, "Box not found");
