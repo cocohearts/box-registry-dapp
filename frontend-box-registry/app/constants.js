@@ -64,11 +64,6 @@ export const registry_abi = [
             "internalType": "address",
             "name": "owner",
             "type": "address"
-        },
-        {
-            "internalType": "uint256",
-            "name": "index",
-            "type": "uint256"
         }
         ],
         "name": "removeBox",
@@ -104,8 +99,9 @@ export const registry_abi = [
         "stateMutability": "payable",
         "type": "receive"
     }
-    ]; 
-    export const box_abi = [
+]; 
+
+export const box_abi = [
     {
         "inputs": [
         {
