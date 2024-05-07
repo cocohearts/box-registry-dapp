@@ -7,7 +7,7 @@
 
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 const ethers = require("ethers");
 import { registry_abi, sepoliaContractAddress, localContractAddress, box_abi } from "./constants.js" 
 
@@ -26,22 +26,7 @@ export default function Home() {
   const [contractState, setContractState] = useState();
   const [withdrawals, setWithdrawals] = useState([]);
   const [pendingCreations, setPendingCreations] = useState([]);
-  const [contractAddress, setContractAddress] = useState('');
-
-  const detectNetwork = async (provider) => {
-    const network = await provider.getNetwork();
-    switch (network.chainId) {
-      case 31337: // Local network chain ID
-        setContractAddress(localContractAddress);
-        break;
-      case 11155111: // Sepolia network chain ID
-        setContractAddress(sepoliaContractAddress);
-        break;
-      default:
-        console.error('Unsupported network');
-        break;
-    }
-  };
+  let contractAddress;
 
   /**
    * Handles the connect button click event
@@ -49,11 +34,26 @@ export default function Home() {
    */
   const handleConnect = async () => {
     const { provider, signer } = await GetProviderSigner();
-    await detectNetwork(provider);
+    console.log(provider);
+    const network = await provider.getNetwork();
+    switch (network.chainId) {
+      case 31337: // Local network chain ID
+        // setContractAddress(localContractAddress);
+        contractAddress = localContractAddress;
+        break;
+      case 11155111: // Sepolia network chain ID
+        // setContractAddress(sepoliaContractAddress);
+        contractAddress = sepoliaContractAddress;
+        break;
+      default:
+        console.error('Unsupported network');
+        break;
+    }
 
     // let contractCode = await provider.getCode(contractAddress);
     // console.log(contractCode);
 
+    console.log(contractAddress);
     let registryContract = new ethers.Contract(contractAddress, registry_abi, signer);
 
     const boxListPromise = new Promise((resolve) => {
@@ -73,8 +73,8 @@ export default function Home() {
     });
     console.log("Listener set!")
     const box_addresses = await registryContract.getUserBoxes();
-    const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`
-    setConnection({ text: "Connecting transaction pending, please wait", url })
+    const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`;
+    setConnection({ text: "Connecting transaction pending, please wait", url });
     await box_addresses.wait();
     await boxListPromise;
 
@@ -346,9 +346,6 @@ function CreateBoxForm({ boxes, setBoxes, balances, setBalances, pendingCreation
           resolve(); // Resolve the promise when the event is handled
         });
     });
-
-    let { provider, signer } = await GetProviderSigner();
-    // const boxContract = new ethers.Contract(contractAddress, registry_abi, signer);
 
     const createBoxTx = await contract.createBox();
     const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
