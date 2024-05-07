@@ -7,7 +7,7 @@
 
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 const ethers = require("ethers");
 import { registry_abi, sepoliaContractAddress, localContractAddress, box_abi } from "./constants.js" 
 
@@ -333,18 +333,18 @@ function CreateBoxForm({ boxes, setBoxes, balances, setBalances, pendingCreation
     console.log("Creating box!")
 
     const boxCreationPromise = new Promise((resolve) => {
-        contract.once("BoxCreation", async (box) => {
-          console.log("heard something!")
-          console.log(box);
-          let updatedBalances = [...balances]; // Create a copy of the balances array
-          updatedBalances.push(0.0);
-          setBalances(updatedBalances);
-          let updatedBoxes = [...boxes]; // Create a copy of the balances array
-          updatedBoxes.push(box);
-          setBoxes(updatedBoxes);
-          console.log("states updated!")
-          resolve(); // Resolve the promise when the event is handled
-        });
+      contract.once("BoxCreation", async (box) => {
+        console.log("heard something!")
+        console.log(box);
+        let updatedBalances = [...balances]; // Create a copy of the balances array
+        updatedBalances.push(0.0);
+        setBalances(updatedBalances);
+        let updatedBoxes = [...boxes]; // Create a copy of the balances array
+        updatedBoxes.push(box);
+        setBoxes(updatedBoxes);
+        console.log("states updated!")
+        resolve(); // Resolve the promise when the event is handled
+      });
     });
 
     const createBoxTx = await contract.createBox();
@@ -360,10 +360,12 @@ function CreateBoxForm({ boxes, setBoxes, balances, setBalances, pendingCreation
     updatedPendingCreations.shift();
     setPendingCreations(updatedPendingCreations);
   }
+
+  let existingCreations = pendingCreations.length > 0
   return (
     <>
       <form onSubmit={handleSubmit}>
-        <button type="submit">Create New Box</button>
+        <button type="submit" disabled={existingCreations}>Create New Box</button>
       </form>
     </>
   )
