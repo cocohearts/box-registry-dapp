@@ -13,4 +13,4 @@ Reinstall dependencies in `contract-box-registry` with `npm install`. Then run `
 Then using one of the private keys output in console to connect to the localhost network, and start interacting with the frontend on that network. Of course Etherscan links will not work from the localhost network.
 
 ## Localhost frontend setup
-Reinstall dependencies n `frontend-box-registry` with `npm install`, then run dapp locally with `npm run dev` from `frontend-box-registry/`.
+Reinstall dependencies in `frontend-box-registry` with `npm install`, then run dapp locally with `npm run dev` from `frontend-box-registry/`.
