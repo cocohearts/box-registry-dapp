@@ -6,7 +6,8 @@ import { ethers, EtherscanLink, GetProviderSigner, useState } from '../../utils'
  * @param {string} props.addr - The address of the box
  * @param {Array<string>} props.boxes - The array of box addresses
  * @param {Function} props.setBalances - The function to update the balances
- * @param {boolean} props.isWithdrawn - The boolean value to check if the box has been withdrawn from
+ * @param {boolean} props.blocked - The boolean value to check if the box is available to interact with
+ * @param {Function} props.setBlocked - The function to update the blocked state
  * @returns {JSX.Element} The rendered deposit form
  */
 export function DepositForm({ addr, boxes, setBalances, blocked, setBlocked}) {

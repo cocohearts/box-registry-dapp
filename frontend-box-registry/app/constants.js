@@ -1,7 +1,6 @@
-// export const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-// export const sepoliaContractAddress = "0x789AB964b80a704222F369cDb6E385974DFa2305";
 export const sepoliaContractAddress = "0x892dC5A07F80bAB62Ed2c3B7E53f16e8a497810a";
 export const localContractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
 export const registry_abi = [
     {
         "inputs": [],

@@ -10,8 +10,8 @@ import { box_abi } from '../../constants';
  * @param {Array<string>} props.boxes - The array of box addresses
  * @param {Function} props.setBoxes - The function to update the box addresses
  * @param {Function} props.setWithdrawals - The function to update the withdrawals
- * @param {boolean} props.isWithdrawn - The boolean value to check if the box has been withdrawn from
- * @param {Function} props.setIsWithdrawn - The function to update the isWithdrawn value
+ * @param {boolean} props.blocked - The boolean value to check if the box is available to interact with
+ * @param {Function} props.setBlocked - The function to update the blocked state
  * @returns {JSX.Element} The rendered withdraw form
  */
 export function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, setWithdrawals, blocked, setBlocked }) {
@@ -22,7 +22,7 @@ export function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, set
     event.preventDefault(); // Prevent the default form submission behavior
     const { provider, signer } = await GetProviderSigner();
     const contract = new ethers.Contract(addr, box_abi, signer);
-    let withdrawal_tx = await contract.withdraw({ gasLimit: 100000 });
+    let withdrawal_tx = await contract.withdraw({ gasLimit: 50000 });
     console.log("withdrawal transaction sent");
     setWithdrawHash(withdrawal_tx.hash);
     setWithdrawText(`Withdrawal transaction pending`);

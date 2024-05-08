@@ -5,10 +5,17 @@ import { localContractAddress, sepoliaContractAddress, registry_abi } from '../c
  * Renders a connect button
  * @param {Object} props - The component props
  * @param {string} props.buttonValue - The value of the button
- * @param {Function} props.handleConnect - The function to handle the connect button click event
+ * @param {Function} props.setBalances - The function to update the balances
+ * @param {Function} props.setBoxes - The function to update the boxes
+ * @param {Function} props.setContractState - The function to update the ethers.js contract object
+ * @param {Function} props.setAccount - The function to update the user account address
+ * @param {Function} props.setNetworkName - The function to update the blockchain network name
+ * @param {Function} props.setConnectionHash - The function to update hash of connecting transaction
+ * @param {Function} props.setConnectionText - The function to update text describing connection transaction status
+ * @param {Function} props.setButtonValue - The function to update the connecting button value
  * @returns {JSX.Element} The rendered connect button
  */
-export function ConnectButton({ buttonValue, setBalances, setBoxes, setContractState, setAccount, setAccountURL, setNetworkName, setConnectionHash, setConnectionText, setButtonValue }) {
+export function ConnectButton({ buttonValue, setBalances, setBoxes, setContractState, setAccount, setNetworkName, setConnectionHash, setConnectionText, setButtonValue }) {
   /**
    * Handles the connect button click event
    * @returns {Promise<void>} A promise that resolves when the connection is established
@@ -16,14 +23,14 @@ export function ConnectButton({ buttonValue, setBalances, setBoxes, setContractS
   let contractAddress;
 
   const handleConnect = async () => {
+    setBalances([]);
+    setBoxes([]);
     const { provider, signer } = await GetProviderSigner();
     const accounts = await provider.listAccounts();
     console.log("Connected with accounts:", accounts)
     const network = await provider.getNetwork();
     const accountAddress = await signer.getAddress();
-    const account_url = `https://sepolia.etherscan.io/address/${accountAddress}`;
     setAccount(accountAddress);
-    setAccountURL(account_url);
     switch (network.chainId) {
       case 31337: // Local network chain ID
         contractAddress = localContractAddress;

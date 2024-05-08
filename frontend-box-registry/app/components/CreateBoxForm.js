@@ -11,8 +11,6 @@ import { ethers, EtherscanLink, GetProviderSigner, useState } from '../utils';
  * @returns {JSX.Element} The rendered create box form
  */
 export function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCreations, contract }) {
-  const [boxCreationPromises, setBoxCreationPromises] = useState([]);
-
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
 
@@ -28,8 +26,6 @@ export function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPend
       });
     });
 
-    setBoxCreationPromises((currentPromises) => [...currentPromises, boxCreationPromise]);
-
     const createBoxTx = await contract.createBox();
     console.log("create box transaction sent");
 
@@ -41,7 +37,7 @@ export function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPend
 
     await createBoxTx.wait();
     console.log("create box transaction confirmed");
-    await boxCreationPromises.shift();
+    await boxCreationPromise;
 
     setPendingCreations((currentPendingCreations) => {
       const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
