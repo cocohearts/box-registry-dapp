@@ -118,7 +118,7 @@ export default function Home() {
           <p key={withdrawal.box}><a href={withdrawal.url}>Withdrawal from box {withdrawal.box} for {ethers.utils.formatEther(withdrawal.amount)}</a></p>
         ))}
       </p>
-      {contractState && <CreateBoxForm setBoxes={setBoxes} setBalances={setBalances} pendingCreations={pendingCreations} setPendingCreations={setPendingCreations} contract={contractState} />}
+      {contractState && <CreateBoxForm setBoxes={setBoxes} setBalances={setBalances} setPendingCreations={setPendingCreations} contract={contractState} />}
       <p>
         {pendingCreations.map((creation) => (
           <p key={creation.hash}><a href={creation.url}>Box creation pending, tx hash {creation.hash}</a></p>
@@ -301,9 +301,10 @@ function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, setWithdra
     withdrawalText = { text:"Withdrawal complete", url: withdrawal_tx_url }
     setWithdrawStatus(withdrawalText);
 
-    const newWithdrawal = { box: addr, amount: balances[index], url: withdrawal_tx_url };
     // push the new withdrawal object to the updatedWithdrawals array at the front
     setWithdrawals((currentWithdrawals) => {
+      const index = boxes.indexOf(addr);
+      const newWithdrawal = { box: addr, amount: balances[index], url: withdrawal_tx_url };
       const updatedWithdrawals = [...currentWithdrawals]; // Create a copy of the withdrawals array
       updatedWithdrawals.unshift(newWithdrawal);
       console.log(updatedWithdrawals);
@@ -311,7 +312,7 @@ function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, setWithdra
     });
 
     setBalances((currentBalances) => {
-      let index = boxes.indexOf(addr);
+      const index = boxes.indexOf(addr);
       const updatedBalances = [...currentBalances]; // Create a copy of the balances array
       updatedBalances.splice(index, 1);
       return updatedBalances;
@@ -395,29 +396,89 @@ function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCrea
     const createBoxTx = await contract.createBox();
     const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
 
-    setPendingCreations((currentPendingCreations) => {
-      const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
-      updatedPendingCreations.push({ url:url, hash:createBoxTx.hash });
-      return updatedPendingCreations;
-    });
+    setPendingCreations((currentPendingCreations) => [...currentPendingCreations, { url:url, hash:createBoxTx.hash }]);
 
     await createBoxTx.wait();
     await boxCreationPromises.shift();
 
-    setPendingCreations((currentPendingCreations) => {
-      const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
-      updatedPendingCreations.shift();
-      return updatedPendingCreations;
-    });
+    setPendingCreations((currentPendingCreations) => [...currentPendingCreations].shift());
+    // setPendingCreations((currentPendingCreations) => {
+    //   const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
+    //   updatedPendingCreations.shift();
+    //   return updatedPendingCreations;
+    // });
   }
 
-  let existingCreations = pendingCreations.length > 0
+  let existingCreations = pendingCreations.length > 0;
   return (
     <>
       <form onSubmit={handleSubmit}>
-        {/* <button type="submit" disabled={existingCreations}>Create New Box</button> */}
-        <button type="submit">Create New Box</button>
+        <button type="submit" disabled={existingCreations}>Create New Box</button>
+        {/* <button type="submit">Create New Box</button> */}
       </form>
     </>
-  )
-}
+  );
+};
+
+// function CreateBoxForm({ setBoxes, setBalances, setPendingCreations, contract }) {
+//   const [creationPromises, setCreationPromises] = useState([]);
+
+//   useEffect(() => {
+//     console.log("useEffect hook is running");
+//     // Function to handle box creation
+//     const handleBoxCreation = async (box) => {
+//       // Update the boxes state with the new box
+//       setBalances((currentBalances) => [...currentBalances, 0.0]); // Add a new balance of 0.0 for the new box
+//       setBoxes(prevBoxes => [...prevBoxes, box]);
+//     };
+
+//     // Set up the event listener
+//     const boxCreationListener = contract.on("BoxCreation", handleBoxCreation);
+
+//     // Cleanup function to remove the event listener
+//     return () => {
+//       contract.off("BoxCreation", boxCreationListener);
+//     };
+//   }, [contract, setBoxes]); // Depend on the contract and setBoxes to ensure the effect runs with the latest props
+
+//   const handleSubmit = async (event) => {
+//     event.preventDefault();
+//     console.log("Creating box!")
+
+//     const createBoxTx = await contract.createBox();
+//     console.log(createBoxTx);
+//     const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
+//     // setPendingCreations((currentPendingCreations) => [...currentPendingCreations, { url:url, hash:createBoxTx.hash }]);
+//     setPendingCreations((currentPendingCreations) => {
+//       const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
+//       updatedPendingCreations.push({ url:url, hash:createBoxTx.hash });
+//       return updatedPendingCreations;
+//     });
+//     const boxCreationPromise = createBoxTx.wait();
+
+//     // Add the new promise to the array
+//     setCreationPromises(prevPromises => [...prevPromises, boxCreationPromise]);
+//     boxCreationPromise.then(() => {
+//       // Remove the promise from the array when it resolves
+//       setCreationPromises(prevPromises => prevPromises.filter(promise => promise !== boxCreationPromise));
+//     });
+
+//     // await createBoxTx.wait();
+//     // await boxCreationPromises.shift();
+
+//     setPendingCreations((currentPendingCreations) => {
+//       const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
+//       updatedPendingCreations.shift();
+//       return updatedPendingCreations;
+//     });
+//   };
+
+//   // Render your component
+//   return (
+//     <>
+//       <form onSubmit={handleSubmit}>
+//         <button type="submit">Create New Box</button>
+//       </form>
+//     </>
+//   );
+// }
