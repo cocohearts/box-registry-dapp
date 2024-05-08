@@ -11,8 +11,6 @@ import React, { useState, useEffect } from 'react';
 const ethers = require("ethers");
 import { registry_abi, sepoliaContractAddress, localContractAddress, box_abi } from "./constants.js" 
 
-// let local = true;
-// let contractAddress = local ? localContractAddress : sepoliaContractAddress;
 
 /**
  * Home component
@@ -39,7 +37,6 @@ export default function Home() {
    */
   const handleConnect = async () => {
     const { provider, signer } = await GetProviderSigner();
-    console.log(provider);
     const network = await provider.getNetwork();
     const accountAddress = await signer.getAddress();
     const account_url = `https://sepolia.etherscan.io/address/${accountAddress}`;
@@ -60,16 +57,11 @@ export default function Home() {
         break;
     }
 
-    // let contractCode = await provider.getCode(contractAddress);
-    // console.log(contractCode);
-
-    console.log(contractAddress);
     let registryContract = new ethers.Contract(contractAddress, registry_abi, signer);
 
     const boxListPromise = new Promise((resolve) => {
       registryContract.once("BoxList", async (boxes) => {
         console.log("heard something!")
-        console.log(boxes);
         let newBalances = [];
         for (let index in boxes) {
           const balance = await provider.getBalance(boxes[index]);
@@ -82,7 +74,6 @@ export default function Home() {
       });
     });
 
-    console.log("Listener set!")
     const box_addresses = await registryContract.getUserBoxes();
     const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`;
     setConnection({ text: "Connecting transaction pending, please wait", url });
@@ -98,7 +89,10 @@ export default function Home() {
   return (
     <>
       <title>Box Registry</title>
-      <h1>Your Boxes</h1>
+      <h1>Box Registry</h1>
+      <p>
+        <a href='https://github.com/cocohearts/box-registry-dapp/blob/main/README.md'>README</a>
+      </p>
       <MyConnectButton buttonValue={buttonValue} handleConnect={handleConnect} />
       {/* <p>{connection}</p> */}
       <p>
@@ -130,6 +124,17 @@ export default function Home() {
   );
 }
 
+/**
+ * Box component
+ * @param {Object} props - The component props
+ * @param {string} props.box - The address of the box
+ * @param {Array<number>} props.balances - The balances of the boxes
+ * @param {Function} props.setBalances - The function to update the balances
+ * @param {Array<string>} props.boxes - The array of box addresses
+ * @param {Function} props.setBoxes - The function to update the box addresses
+ * @param {Function} props.setWithdrawals - The function to update the withdrawals
+ * @returns {JSX.Element} The rendered Box component
+*/
 function BoxComponent({ box, balances, setBalances, boxes, setBoxes, setWithdrawals}) {
   const [isWithdrawn, setIsWithdrawn] = useState(false);
   return (
@@ -153,12 +158,11 @@ async function GetProviderSigner() {
         console.log("Acct request error:", error)
       }
       provider = new ethers.providers.Web3Provider(window.ethereum);
-      console.log("connected!")
-      const accounts = await window.ethereum.request({ method: "eth_accounts" })
-      console.log(`Connected accounts: ${accounts}`)
+      const accounts = await provider.listAccounts();
+      console.log("Connected with accounts:", accounts)
       signer = provider.getSigner();
     } else {
-      setButtonValue("Please install MetaMask")
+      console.error("No ethereum provider found")
     }
     return { provider,signer };
 }
@@ -166,12 +170,11 @@ async function GetProviderSigner() {
 /**
  * Renders a link to the Etherscan transaction page
  * @param {string} txHash - The transaction hash
+ * @param {string} text - The text to display for the link
  * @returns {JSX.Element} The rendered link to the Etherscan transaction page
  */
 function EtherScanLink({ txHash, text }) {
-  console.log(txHash);
   let url = `https://sepolia.etherscan.io/tx/${txHash}`;
-  console.log(url);
   return (
     <a href={url}>{text}</a>
   )
@@ -179,7 +182,6 @@ function EtherScanLink({ txHash, text }) {
 
 /**
  * Renders information about a specific box including its address and balance.
- * 
  * @param {Object} props - The props object containing box and balance values.
  * @param {string} props.box - The address of the box.
  * @param {number} props.balance - The balance of the box.
@@ -204,9 +206,10 @@ function BoxInfo({ box, balance }) {
  * Renders a deposit form for a specific box
  * @param {Object} props - The component props
  * @param {string} props.addr - The address of the box
+ * @param {Array<string>} props.boxes - The array of box addresses
  * @param {Array<number>} props.balances - The balances of the boxes
  * @param {Function} props.setBalances - The function to update the balances
- * @param {number} props.index - The index of the box
+ * @param {boolean} props.isWithdrawn - The boolean value to check if the box has been withdrawn from
  * @returns {JSX.Element} The rendered deposit form
  */
 function DepositForm({ addr, boxes, balances, setBalances, isWithdrawn}) {
@@ -221,16 +224,16 @@ function DepositForm({ addr, boxes, balances, setBalances, isWithdrawn}) {
       to: addr,
       value: ethers.utils.parseUnits(inputValue,"ether"),
     };
-    console.log(`Form submitted with value: ${inputValue}`);
+
     const newDepositTx = await signer.sendTransaction(transaction);
-    console.log(`Transaction sent with value: ${inputValue}`);
-    console.log(newDepositTx['hash']);
+
     setDepositTxHash(newDepositTx['hash']);
     setDepositTxText(`Deposit of ${inputValue} pending`);
     setInputValue('');
+
     await newDepositTx.wait();
+
     setDepositTxText(`Deposit of ${inputValue} confirmed`);
-    console.log(`Transaction with value ${inputValue} confirmed`);
 
     setBalances((currentBalances) => {
       const updatedBalances = [...currentBalances]; // Create a copy of the balances array
@@ -249,12 +252,10 @@ function DepositForm({ addr, boxes, balances, setBalances, isWithdrawn}) {
     setInputValue(event.target.value);
   };
 
-  let index = boxes.indexOf(addr);
-
   return (
     <>
       {/* <p>Address: {addr}, Balance: {ethers.utils.formatEther(balances[index])}</p> */}
-      <BoxInfo box={addr} balance={ethers.utils.formatEther(balances[index])} />
+      <BoxInfo box={addr} balance={ethers.utils.formatEther(balances[boxes.indexOf(addr)])} />
       <form onSubmit={handleSubmit}>
         <label htmlFor="myInput">Add more:</label>
         <br/>
@@ -275,11 +276,14 @@ function DepositForm({ addr, boxes, balances, setBalances, isWithdrawn}) {
 /**
  * Renders a withdraw form for a specific box
  * @param {Object} props - The component props
- * @param {number} props.index - The index of the box
+ * @param {number} props.addr - The address of the box
  * @param {Array<number>} props.balances - The balances of the boxes
  * @param {Function} props.setBalances - The function to update the balances
  * @param {Array<string>} props.boxes - The array of box addresses
  * @param {Function} props.setBoxes - The function to update the box addresses
+ * @param {Function} props.setWithdrawals - The function to update the withdrawals
+ * @param {boolean} props.isWithdrawn - The boolean value to check if the box has been withdrawn from
+ * @param {Function} props.setIsWithdrawn - The function to update the isWithdrawn value
  * @returns {JSX.Element} The rendered withdraw form
  */
 function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, setWithdrawals, isWithdrawn, setIsWithdrawn }) {
@@ -287,13 +291,9 @@ function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, setWithdra
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
     const { provider, signer } = await GetProviderSigner();
-    console.log(signer);
     const contract = new ethers.Contract(addr, box_abi, signer);
-    console.log(addr);
-    console.log(contract);
     let withdrawal_tx = await contract.withdraw({ gasLimit: 100000 });
     const withdrawal_tx_url = `https://sepolia.etherscan.io/tx/${withdrawal_tx.hash}`;
-    console.log(withdrawal_tx);
     let withdrawalText = { text: "Withdrawal transaction pending", url: withdrawal_tx_url }
 
     setWithdrawStatus(withdrawalText);
@@ -305,25 +305,21 @@ function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, setWithdra
 
     // push the new withdrawal object to the updatedWithdrawals array at the front
     setWithdrawals((currentWithdrawals) => {
-      const index = boxes.indexOf(addr);
-      const newWithdrawal = { box: addr, amount: balances[index], url: withdrawal_tx_url };
+      const newWithdrawal = { box: addr, amount: balances[boxes.indexOf(addr)], url: withdrawal_tx_url };
       const updatedWithdrawals = [...currentWithdrawals]; // Create a copy of the withdrawals array
       updatedWithdrawals.unshift(newWithdrawal);
-      console.log(updatedWithdrawals);
       return updatedWithdrawals;
     });
 
     setBalances((currentBalances) => {
-      const index = boxes.indexOf(addr);
       const updatedBalances = [...currentBalances]; // Create a copy of the balances array
-      updatedBalances.splice(index, 1);
+      updatedBalances.splice(boxes.indexOf(addr), 1);
       return updatedBalances;
     });
     
     setBoxes((currentBoxes) => {
-      const index = currentBoxes.indexOf(addr);
       const updatedBoxes = [...currentBoxes]; // Create a copy of the boxes array
-      updatedBoxes.splice(index, 1);
+      updatedBoxes.splice(currentBoxes.indexOf(addr), 1);
       return updatedBoxes;
     });
 
@@ -345,7 +341,6 @@ function WithdrawForm({ addr, balances, setBalances, boxes, setBoxes, setWithdra
  * Renders a connect button
  * @param {Object} props - The component props
  * @param {string} props.buttonValue - The value of the button
- * @param {Function} props.setButtonValue - The function to update the button value
  * @param {Function} props.handleConnect - The function to handle the connect button click event
  * @returns {JSX.Element} The rendered connect button
  */
@@ -358,11 +353,11 @@ function MyConnectButton({ buttonValue, handleConnect }) {
 /**
  * Renders a form to create a new box
  * @param {Object} props - The component props
- * @param {Array<number>} props.balances - The balances of the boxes
- * @param {Function} props.setBalances - The function to update the balances
- * @param {Array<string>} props.boxes - The array of box addresses
  * @param {Function} props.setBoxes - The function to update the box addresses
- * @param {Object} props.contract - The contract object
+ * @param {Function} props.setBalances - The function to update the balances
+ * @param {Array<Object>} props.pendingCreations - The array of pending creations
+ * @param {Function} props.setPendingCreations - The function to update the pending creations
+ * @param {Object} props.contract - The ethers.js contract object
  * @returns {JSX.Element} The rendered create box form
  */
 function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCreations, contract }) {
@@ -370,25 +365,15 @@ function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCrea
 
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent the default form submission behavior
-    console.log("Creating box!")
 
     const boxCreationPromise = new Promise((resolve) => {
       contract.once("BoxCreation", async (box) => {
-        console.log("heard something!")
-        console.log(box);
+        console.log("heard box creation", box);
 
-        setBalances((currentBalances) => {
-          const updatedBalances = [...currentBalances]; // Create a copy of the balances array
-          updatedBalances.push(0.0);
-          return updatedBalances;
-        });
-        setBoxes((currentBoxes) => {
-          const updatedBoxes = [...currentBoxes]; // Create a copy of the boxes array
-          updatedBoxes.push(box);
-          return updatedBoxes;
-        });
+        setBoxes((currentBoxes) => [...currentBoxes, box]);
+        setBalances((currentBalances) => [...currentBalances, 0.0]);
 
-        console.log("states updated!")
+        console.log("states updated")
         resolve(); // Resolve the promise when the event is handled
       });
     });
@@ -398,7 +383,6 @@ function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCrea
     const createBoxTx = await contract.createBox();
     const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
 
-    // setPendingCreations((currentPendingCreations) => [...currentPendingCreations, { url:url, hash:createBoxTx.hash }]);
     setPendingCreations((currentPendingCreations) => {
       const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
       updatedPendingCreations.push({ url:url, hash:createBoxTx.hash });
@@ -408,17 +392,11 @@ function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCrea
     await createBoxTx.wait();
     await boxCreationPromises.shift();
 
-    // setPendingCreations((currentPendingCreations) => [...currentPendingCreations].shift());
     setPendingCreations((currentPendingCreations) => {
       const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
       updatedPendingCreations.shift();
       return updatedPendingCreations;
     });
-    // setPendingCreations((currentPendingCreations) => {
-    //   const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
-    //   updatedPendingCreations.shift();
-    //   return updatedPendingCreations;
-    // });
   }
 
   let existingCreations = pendingCreations.length > 0;
@@ -426,71 +404,7 @@ function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCrea
     <>
       <form onSubmit={handleSubmit}>
         <button type="submit" disabled={existingCreations}>Create New Box</button>
-        {/* <button type="submit">Create New Box</button> */}
       </form>
     </>
   );
 };
-
-// function CreateBoxForm({ setBoxes, setBalances, setPendingCreations, contract }) {
-//   const [creationPromises, setCreationPromises] = useState([]);
-
-//   useEffect(() => {
-//     console.log("useEffect hook is running");
-//     // Function to handle box creation
-//     const handleBoxCreation = async (box) => {
-//       // Update the boxes state with the new box
-//       setBalances((currentBalances) => [...currentBalances, 0.0]); // Add a new balance of 0.0 for the new box
-//       setBoxes(prevBoxes => [...prevBoxes, box]);
-//     };
-
-//     // Set up the event listener
-//     const boxCreationListener = contract.on("BoxCreation", handleBoxCreation);
-
-//     // Cleanup function to remove the event listener
-//     return () => {
-//       contract.off("BoxCreation", boxCreationListener);
-//     };
-//   }, [contract, setBoxes]); // Depend on the contract and setBoxes to ensure the effect runs with the latest props
-
-//   const handleSubmit = async (event) => {
-//     event.preventDefault();
-//     console.log("Creating box!")
-
-//     const createBoxTx = await contract.createBox();
-//     console.log(createBoxTx);
-//     const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
-//     // setPendingCreations((currentPendingCreations) => [...currentPendingCreations, { url:url, hash:createBoxTx.hash }]);
-//     setPendingCreations((currentPendingCreations) => {
-//       const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
-//       updatedPendingCreations.push({ url:url, hash:createBoxTx.hash });
-//       return updatedPendingCreations;
-//     });
-//     const boxCreationPromise = createBoxTx.wait();
-
-//     // Add the new promise to the array
-//     setCreationPromises(prevPromises => [...prevPromises, boxCreationPromise]);
-//     boxCreationPromise.then(() => {
-//       // Remove the promise from the array when it resolves
-//       setCreationPromises(prevPromises => prevPromises.filter(promise => promise !== boxCreationPromise));
-//     });
-
-//     // await createBoxTx.wait();
-//     // await boxCreationPromises.shift();
-
-//     setPendingCreations((currentPendingCreations) => {
-//       const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
-//       updatedPendingCreations.shift();
-//       return updatedPendingCreations;
-//     });
-//   };
-
-//   // Render your component
-//   return (
-//     <>
-//       <form onSubmit={handleSubmit}>
-//         <button type="submit">Create New Box</button>
-//       </form>
-//     </>
-//   );
-// }
