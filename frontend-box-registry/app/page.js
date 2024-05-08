@@ -82,11 +82,13 @@ export default function Home() {
         resolve(); // Resolve the promise when the event is handled
       });
     });
+
     console.log("Listener set!")
     const box_addresses = await registryContract.getUserBoxes();
     const url = `https://sepolia.etherscan.io/tx/${box_addresses.hash}`;
     setConnection({ text: "Connecting transaction pending, please wait", url });
     await box_addresses.wait();
+
     await boxListPromise;
 
     setContractState(registryContract);
@@ -104,7 +106,7 @@ export default function Home() {
         <>
           <a href={connection.url} target="_blank" rel="noopener noreferrer">{connection.text}</a>
           <br/>
-          Your account: {network_name=="Sepolia" ? <a href={account_url} target="_blank" rel="noopener noreferrer">{account}</a> : {account}} on {network_name} network
+          Your account: {network_name=="Sepolia" ? <a href={account_url} target="_blank" rel="noopener noreferrer">{account}</a> : <>{account}</>} on {network_name} network
         </> 
         : null}
       </p>
@@ -118,7 +120,7 @@ export default function Home() {
           <p key={withdrawal.box}><a href={withdrawal.url}>Withdrawal from box {withdrawal.box} for {ethers.utils.formatEther(withdrawal.amount)}</a></p>
         ))}
       </p>
-      {contractState && <CreateBoxForm setBoxes={setBoxes} setBalances={setBalances} setPendingCreations={setPendingCreations} contract={contractState} />}
+      {contractState && <CreateBoxForm setBoxes={setBoxes} setBalances={setBalances} pendingCreations={pendingCreations} setPendingCreations={setPendingCreations} contract={contractState} />}
       <p>
         {pendingCreations.map((creation) => (
           <p key={creation.hash}><a href={creation.url}>Box creation pending, tx hash {creation.hash}</a></p>
@@ -396,12 +398,22 @@ function CreateBoxForm({ setBoxes, setBalances, pendingCreations, setPendingCrea
     const createBoxTx = await contract.createBox();
     const url = `https://sepolia.etherscan.io/tx/${createBoxTx.hash}`;
 
-    setPendingCreations((currentPendingCreations) => [...currentPendingCreations, { url:url, hash:createBoxTx.hash }]);
+    // setPendingCreations((currentPendingCreations) => [...currentPendingCreations, { url:url, hash:createBoxTx.hash }]);
+    setPendingCreations((currentPendingCreations) => {
+      const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
+      updatedPendingCreations.push({ url:url, hash:createBoxTx.hash });
+      return updatedPendingCreations;
+    });
 
     await createBoxTx.wait();
     await boxCreationPromises.shift();
 
-    setPendingCreations((currentPendingCreations) => [...currentPendingCreations].shift());
+    // setPendingCreations((currentPendingCreations) => [...currentPendingCreations].shift());
+    setPendingCreations((currentPendingCreations) => {
+      const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
+      updatedPendingCreations.shift();
+      return updatedPendingCreations;
+    });
     // setPendingCreations((currentPendingCreations) => {
     //   const updatedPendingCreations = [...currentPendingCreations]; // Create a copy of the pendingCreations array
     //   updatedPendingCreations.shift();
