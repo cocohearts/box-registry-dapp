@@ -75,7 +75,6 @@ export default function Home() {
           const balance = await provider.getBalance(boxes[index]);
           newBalances.push(balance);
         }
-        setConnection({ text: "Connecting transaction completed!", url });
         setBalances(newBalances);
         setBoxes(boxes);
         setContractState(registryContract);
@@ -90,6 +89,7 @@ export default function Home() {
     await box_addresses.wait();
 
     await boxListPromise;
+    setConnection({ text: "Connecting transaction completed!", url });
 
     setContractState(registryContract);
     setButtonValue("Refresh registry");
