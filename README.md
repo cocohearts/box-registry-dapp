@@ -2,6 +2,8 @@
 
 Combined Solidity source contract and Next JS frontend allowing interface with the box-registry Sepolia smart contract located [here](https://sepolia.etherscan.io/address/0x892dC5A07F80bAB62Ed2c3B7E53f16e8a497810a).
 
+Deployed with Vercel [here](https://box-registry-dapp.vercel.app/).
+
 The box registry allows Sepolia/localhost users to create new boxes, deposit ETH, and withdraw ETH from those boxes.
 
 ## Minimal setup to use
